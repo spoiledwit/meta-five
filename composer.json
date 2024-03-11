@@ -1,12 +1,12 @@
 {
-    "name": "aleedhillon/meta-five",
+    "name": "spoiledwit/meta-five",
     "description": "Metatrader 5 Web API Wrapper for Laravel",
     "type": "library",
     "license": "MIT",
     "authors": [
         {
-            "name": "Ali A. Dhillon",
-            "email": "aleedhx@gmail.com"
+            "name": "Ahmad Ashfaq",
+            "email": "spoiledwit@gmail.com"
         }
     ],
     "autoload": {
