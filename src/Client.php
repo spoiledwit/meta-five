@@ -11,7 +11,7 @@ use AleeDhillon\MetaFive\Exceptions\UserException;
 use AleeDhillon\MetaFive\Lib\MTAuthProtocol;
 use AleeDhillon\MetaFive\Lib\MTConnect;
 use AleeDhillon\MetaFive\Lib\MTLogger;
-use AleeDhillon\MetaFive\Lib\MTRetCode;
+use AleeDhillon\MetaFive\Lib\MTRetCode; 
 use AleeDhillon\MetaFive\Lib\MTTradeProtocol;
 use AleeDhillon\MetaFive\Lib\MTUser;
 use AleeDhillon\MetaFive\Lib\MTUserProtocol;
@@ -26,6 +26,7 @@ use AleeDhillon\MetaFive\Lib\MTDealProtocol;
 use AleeDhillon\MetaFive\Lib\MTGroupProtocol;
 use AleeDhillon\MetaFive\Entities\Order;
 use AleeDhillon\MetaFive\Lib\CMT5Request;
+use AleeDhillon\MetaFive\Lib\MTProtocolConsts;
 use stdClass;
 
 //+------------------------------------------------------------------+
@@ -702,24 +703,56 @@ class Client
         }
         return $deals;
     }
+/**
+ * Make a deposit change for a user
+ *
+ * @param int $login User login
+ * @param float $new_deposit New deposit amount
+ * @param string $comment Comment for the deposit change
+ * @param string $type Type of balance change: DEAL_BALANCE, DEAL_CREDIT, DEAL_CHARGE, DEAL_BONUS
+ * @return MTRetCode Status code of the deposit change operation
+ * @throws ConnectionException If there is a connection error
+ * @throws UserException If there is an error making the deposit change
+ */
+public function makeDeposit($login, $new_deposit, $comment, $type)
+{
+    $login = (int)$login;
+    // Send request
+    $data = array(
+        MTProtocolConsts::WEB_PARAM_LOGIN => $login,
+        MTProtocolConsts::WEB_PARAM_TYPE => $type,
+        MTProtocolConsts::WEB_PARAM_BALANCE => $new_deposit,
+        MTProtocolConsts::WEB_PARAM_COMMENT => $comment
+    );
 
-    public function getDeal($ticket)
-    {
-        $deal = null;
-        if (!$this->isConnected()) {
-            $conn = $this->connect();
+    if (!$this->isConnected()) {
+        $conn = $this->connect();
 
-            if ($conn != MTRetCode::MT_RET_OK) {
-                throw new ConnectionException(MTRetCode::GetError($conn));
-            }
+        if ($conn != MTRetCode::MT_RET_OK) {
+            throw new ConnectionException(MTRetCode::GetError($conn));
         }
-        $mt_user = new MTDealProtocol($this->m_connect);
-        $result = $mt_user->DealGet($ticket, $deal);
-        if ($result != MTRetCode::MT_RET_OK) {
-            throw new UserException(MTRetCode::GetError($result));
-        }
-        return $deal;
     }
+
+    // Send deposit change request
+    if (!$this->m_connect->Send(MTProtocolConsts::WEB_CMD_USER_DEPOSIT_CHANGE, $data)) {
+        if (MTLogger::getIsWriteLog()) MTLogger::write(MTLoggerType::ERROR, 'send user deposit change failed');
+        return MTRetCode::MT_RET_ERR_NETWORK;
+    }
+
+    // Get response
+    if (($answer = $this->m_connect->Read()) == null) {
+        if (MTLogger::getIsWriteLog()) MTLogger::write(MTLoggerType::ERROR, 'answer user deposit change is empty');
+        return MTRetCode::MT_RET_ERR_NETWORK;
+    }
+
+    // Parse response
+    if (($error_code = $this->ParseClearCommand(MTProtocolConsts::WEB_CMD_USER_DEPOSIT_CHANGE, $answer)) != MTRetCode::MT_RET_OK) {
+        if (MTLogger::getIsWriteLog()) MTLogger::write(MTLoggerType::ERROR, 'parse user deposit change failed: [' . $error_code . ']' . MTRetCode::GetError($error_code));
+        return $error_code;
+    }
+
+    return MTRetCode::MT_RET_OK;
+}
 
     /**
      * Get Group Information by group name

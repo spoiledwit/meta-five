@@ -10,7 +10,7 @@ class Order
     protected $symbol;
     protected $volume;
     protected $type;
-
+ 
     /**
      * @return mixed
      */
