@@ -74,29 +74,32 @@ class MTTradeProtocol
      */
     private function Parse(&$answer, &$trade_answer)
     {
+        $pattern = '/TRADE_BALANCE\|RETCODE=(\d+)\s+Done\|TICKET=(\d+)\|\r\n/';
 
-        $pos = 1;
-        //--- get command answer
-        $command_real = $this->m_connect->GetCommand($answer, $pos);
-        if($command_real != MTProtocolConsts::WEB_CMD_TRADE_BALANCE) return MTRetCode::MT_RET_ERR_DATA;
-        //---
-        $trade_answer = new MTTradeAnswer();
-        //--- get param
-        $pos_end = -1;
-        $params = explode('|', $answer);
+    // Attempt to match the response format using regular expression
+    if (preg_match($pattern, $answer, $matches)) {
+        if (count($matches) === 3) {
+            // Ensure object is created before accessing properties
+            $trade_answer = new MTTradeAnswer();
 
-        $trade_answer->RetCode = (string) filter_var(explode('=',$params[1])[1], FILTER_SANITIZE_NUMBER_INT);
+            // Extract data from matched groups (assuming correct format)
+            $trade_answer->RetCode = $matches[1];
+            $trade_answer->Ticket = $matches[2];
 
-        if ($trade_answer->RetCode == MTRetCode::MT_RET_OK)
-        {
-            $trade_answer->Ticket =(int) filter_var(explode('=',$params[2])[1], FILTER_SANITIZE_NUMBER_INT);
+            // ... rest of your logic for handling successful parsing
+            return MTRetCode::MT_RET_OK;
+        } else {
+            // Handle parsing error (format mismatch - number of matches)
+            return MTRetCode::MT_RET_ERR_DATA; // Or a specific error code for format mismatch
         }
+    } else {
+        // Handle parsing error (format mismatch - no match found)
+        return MTRetCode::MT_RET_ERR_DATA; // Or a specific error code for format mismatch
+    }
 
-
-        //--- check ret code
-        if(($ret_code = MTConnect::GetRetCode($trade_answer->RetCode)) != MTRetCode::MT_RET_OK) return $ret_code;
-        //---
-        return MTRetCode::MT_RET_OK;
+    // This line is unreachable due to the return statements above
+    // but can be kept for clarity
+    return MTRetCode::MT_RET_OK;
     }
 }
 
